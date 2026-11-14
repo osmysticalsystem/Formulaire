@@ -208,7 +208,7 @@ form.onsubmit=ev=>{
   data.unshift(o);
   const b=$('#banner');b.hidden=false;
   if(put(KEY,data)){try{localStorage.removeItem(DK)}catch(e){}form.reset();setPhoto(null);show(0);
-    b.textContent=ENDPOINT?'Candidature enregistrée. Elle est transmise à l’Ordre dès que la connexion le permet.':'Mode test : candidature enregistrée sur cet appareil uniquement (aucun envoi configuré).';sync()}
+    b.textContent=ENDPOINT?'Candidature enregistrée. Envoi à l’Ordre en cours…':'Mode test : candidature enregistrée sur cet appareil uniquement (aucun envoi configuré).';sync()}
   else{data.shift();b.style.color='var(--bad)';b.style.borderColor='var(--bad)';b.textContent='Enregistrement impossible : le stockage du navigateur est indisponible.'}
 };
 
@@ -223,15 +223,25 @@ document.addEventListener('change',e=>{
   img.onerror=()=>URL.revokeObjectURL(url);img.src=url;
 });
 /* === ENVOI VERS GOOGLE SHEETS : collez ici l’URL de votre application Apps Script === */
-const ENDPOINT='https://script.google.com/macros/s/AKfycbzD7DtAqDkASmsXPAROz3cSgE2xG0qtCsB43CtZwjTz6BBVsEU5IvNAV02RZ1AiLGQBCQ/exec';
+const ENDPOINT='https://script.google.com/macros/s/AKfycbwcYZkpoQqv-7D1iXQA-EAJx_5Kj1i5ESt4jncAWy5NFCSFBWvkqyo9GPWalLP0K8_0/exec';
 const payload=d=>{const p={id:d.id,'Date de réception':new Date(d.date).toISOString(),photo:d.photo||''};
   S.forEach((s,i)=>s.f.forEach((f,j)=>{if(f[0]==='i')return;const k=f[0]==='x'?'Attestation recopiée':f[1].replace(/<[^>]+>/g,'').replace(/\s+/g,' ');p[k]=d[`q${i}_${j}`]||''}));return p};
 let syncing=false;
+function say(msg,bad){const b=$('#banner');b.hidden=false;b.textContent=msg;b.style.color=bad?'var(--bad)':'';b.style.borderColor=bad?'var(--bad)':''}
 async function sync(){
-  if(!ENDPOINT||!navigator.onLine||syncing)return;syncing=true;let ch=false;
+  if(!ENDPOINT||!navigator.onLine||syncing||!data.some(d=>!d.sent))return;
+  syncing=true;let ch=false,err='';
   for(const d of data){if(d.sent)continue;
-    try{await fetch(ENDPOINT,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(payload(d))});d.sent=true;ch=true}catch(e){break}}
-  if(ch){data=data.filter(d=>!d.sent);put(KEY,data)}syncing=false;
+    try{
+      const r=await fetch(ENDPOINT,{method:'POST',body:JSON.stringify(payload(d))});
+      const t=(await r.text()).trim();
+      if(t==='ok'||t==='dup'){d.sent=true;ch=true}
+      else{err=t.replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').slice(0,200)||('code '+r.status);break}
+    }catch(e){err='connexion au serveur impossible ('+(e.message||e)+')';break}}
+  if(ch){data=data.filter(d=>!d.sent);put(KEY,data)}
+  syncing=false;
+  if(err)say('L’envoi à l’Ordre n’a pas abouti : '+err+'. Votre candidature reste enregistrée sur cet appareil et sera renvoyée automatiquement.',1);
+  else if(ch)say('Votre candidature a bien été transmise à l’Ordre. Merci.');
 }
 addEventListener('online',sync);
 sync();
