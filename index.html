@@ -223,7 +223,7 @@ document.addEventListener('change',e=>{
   img.onerror=()=>URL.revokeObjectURL(url);img.src=url;
 });
 /* === ENVOI VERS GOOGLE SHEETS : collez ici l’URL de votre application Apps Script === */
-const ENDPOINT='https://script.google.com/macros/s/AKfycbwcYZkpoQqv-7D1iXQA-EAJx_5Kj1i5ESt4jncAWy5NFCSFBWvkqyo9GPWalLP0K8_0/exec';
+const ENDPOINT='https://script.google.com/macros/s/AKfycbySVXsyFjJtIPvKbwD3TJ94jDSnvVYxu6Or_FnffKRhk7fc5ts4Fjg0y460w3TLsnGBhA/exec';
 const payload=d=>{const p={id:d.id,'Date de réception':new Date(d.date).toISOString(),photo:d.photo||''};
   S.forEach((s,i)=>s.f.forEach((f,j)=>{if(f[0]==='i')return;const k=f[0]==='x'?'Attestation recopiée':f[1].replace(/<[^>]+>/g,'').replace(/\s+/g,' ');p[k]=d[`q${i}_${j}`]||''}));return p};
 let syncing=false;
